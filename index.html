@@ -1,0 +1,1717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instagram Split-Testing Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <style>
+        .page { display: none; }
+        .page.active { display: block; }
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* Custom checkbox styles */
+        .custom-checkbox {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 1.25rem;
+            height: 1.25rem;
+            border: 2px solid #d1d5db;
+            border-radius: 0.25rem;
+            background-color: white;
+            cursor: pointer;
+            position: relative;
+        }
+        .custom-checkbox:checked {
+            background-color: #9333ea;
+            border-color: #9333ea;
+        }
+        .custom-checkbox:checked::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 0.875rem;
+            font-weight: bold;
+        }
+        .delete-btn:hover {
+            background-color: #dc2626;
+            color: white;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-lg mb-8">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center">
+                    <svg class="w-8 h-8 mr-3 text-purple-600" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zM5.838 12a6.162 6.162 0 1 1 12.324 0 6.162 6.162 0 0 1-12.324 0zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm4.965-10.405a1.44 1.44 0 1 1 2.881.001 1.44 1.44 0 0 1-2.881-.001z"/>
+                    </svg>
+                    <h1 class="text-xl font-bold text-gray-800">Split-Testing Tracker</h1>
+                </div>
+                <div class="flex space-x-1">
+                    <button onclick="showPage('analyze')" class="nav-btn px-4 py-2 rounded-lg hover:bg-purple-100 transition" id="analyze-btn">Analyze</button>
+                    <button onclick="showPage('input')" class="nav-btn px-4 py-2 rounded-lg hover:bg-purple-100 transition" id="input-btn">Input</button>
+                    <button onclick="showPage('data')" class="nav-btn px-4 py-2 rounded-lg hover:bg-purple-100 transition" id="data-btn">Data</button>
+                    <button onclick="showPage('add')" class="nav-btn px-4 py-2 rounded-lg hover:bg-purple-100 transition" id="add-btn">Add Account</button>
+                    <button onclick="showPage('settings')" class="nav-btn px-4 py-2 rounded-lg hover:bg-purple-100 transition" id="settings-btn">⚙️</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4">
+        <!-- Welcome Alert for First Time Users -->
+        <div id="welcome-alert" class="hidden bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 mb-6 rounded">
+            <p class="font-bold">Welcome to Instagram Split-Testing Tracker!</p>
+            <p>This app stores all data locally in your browser. Your data is private and never leaves your device.</p>
+            <p class="mt-2">Get started by adding your first account in the "Add Account" tab.</p>
+        </div>
+
+        <!-- Analyze Page -->
+        <div id="analyze-page" class="page active">
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-2xl font-bold mb-6 text-gray-800">Performance Analysis</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Comparison Mode</label>
+                        <select id="comparison-mode" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" onchange="updateComparisonOptions()">
+                            <option value="strategy">Compare by Strategy</option>
+                            <option value="account">Compare by Account</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Select Items</label>
+                        <div id="comparison-items" class="border rounded-lg p-2 max-h-32 overflow-y-auto">
+                            <!-- Checkboxes will be dynamically added here -->
+                        </div>
+                    </div>
+                    <div class="flex items-end">
+                        <button onclick="runComparison()" class="w-full bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition">
+                            Analyze
+                        </button>
+                    </div>
+                </div>
+
+                <div id="analysis-results" class="mt-6"></div>
+                <canvas id="comparison-chart" class="mt-6" style="display:none;"></canvas>
+                <canvas id="ban-analysis-chart" class="mt-6" style="display:none;"></canvas>
+                
+                <!-- Ban Probability Calculator -->
+                <div class="mt-6 p-4 bg-gray-50 rounded-lg">
+                    <h3 class="text-lg font-semibold mb-4">Ban Probability Calculator</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Days Active</label>
+                            <input type="number" id="calc-days" class="w-full px-3 py-2 border rounded-lg" placeholder="e.g., 30">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Daily Actions</label>
+                            <input type="number" id="calc-actions" class="w-full px-3 py-2 border rounded-lg" placeholder="e.g., 150">
+                        </div>
+                        <div class="flex items-end">
+                            <button onclick="calculateBanProbability()" class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                                Calculate Risk
+                            </button>
+                        </div>
+                    </div>
+                    <div id="ban-probability-result" class="mt-4 hidden">
+                        <div class="p-4 rounded-lg">
+                            <p class="text-lg font-semibold">Ban Risk: <span id="ban-risk-value" class="text-2xl"></span></p>
+                            <p class="text-sm text-gray-600 mt-2" id="ban-risk-message"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Input Page -->
+        <div id="input-page" class="page">
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-2xl font-bold mb-6 text-gray-800">Daily Activity Input</h2>
+                
+                <div class="mb-6">
+                    <label class="block text-sm font-medium mb-2">Select Account</label>
+                    <div class="flex gap-2">
+                        <select id="account-select" class="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" onchange="loadAccountData()">
+                            <option value="">Choose an account...</option>
+                        </select>
+                        <button onclick="previousAccount()" class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">←</button>
+                        <button onclick="nextAccount()" class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">→</button>
+                    </div>
+                </div>
+
+                <div id="account-info" class="hidden">
+                    <div class="mb-6 p-4 bg-gray-50 rounded-lg">
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-3">
+                            <div>
+                                <span class="font-semibold text-sm">Username:</span>
+                                <p class="text-sm" id="info-username"></p>
+                            </div>
+                            <div>
+                                <span class="font-semibold text-sm">Password:</span>
+                                <div class="flex items-center gap-2">
+                                    <span id="info-password" class="text-sm"></span>
+                                    <button onclick="togglePasswordVisibility()" class="text-gray-500 hover:text-gray-700">
+                                        <svg id="password-eye-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
+                                <span class="font-semibold text-sm">Proxy ID:</span>
+                                <p class="text-sm" id="info-proxy-id"></p>
+                            </div>
+                            <div>
+                                <span class="font-semibold text-sm">Proxy Password:</span>
+                                <p class="text-sm" id="info-proxy-password">••••••••</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            <div><span class="font-semibold">Strategy:</span> <span id="info-strategy"></span></div>
+                            <div><span class="font-semibold">Account Age:</span> <span id="info-age"></span> days</div>
+                            <div><span class="font-semibold">Current Day:</span> <span id="info-day"></span></div>
+                            <div><span class="font-semibold">Proxy Type:</span> <span id="info-proxy"></span></div>
+                            <div>
+                                <span class="font-semibold">Status:</span>
+                                <select id="account-status-select" class="ml-2 px-2 py-1 border rounded text-sm" onchange="updateAccountStatus()">
+                                    <option value="Active" class="text-green-600">Active</option>
+                                    <option value="Banned" class="text-red-600">Banned</option>
+                                    <option value="Shadowbanned" class="text-yellow-600">Shadowbanned</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                        <div class="bg-blue-50 p-4 rounded-lg">
+                            <h3 class="font-semibold text-blue-800 mb-2">Follows</h3>
+                            <div class="flex items-center justify-between">
+                                <button onclick="adjustValue('follows', -1)" class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600">-</button>
+                                <span id="follows-count" class="text-2xl font-bold">0</span>
+                                <button onclick="adjustValue('follows', 1)" class="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600">+</button>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-pink-50 p-4 rounded-lg">
+                            <h3 class="font-semibold text-pink-800 mb-2">Likes</h3>
+                            <div class="flex items-center justify-between">
+                                <button onclick="adjustValue('likes', -1)" class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600">-</button>
+                                <span id="likes-count" class="text-2xl font-bold">0</span>
+                                <button onclick="adjustValue('likes', 1)" class="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600">+</button>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-yellow-50 p-4 rounded-lg">
+                            <h3 class="font-semibold text-yellow-800 mb-2">Comments</h3>
+                            <div class="flex items-center justify-between">
+                                <button onclick="adjustValue('comments', -1)" class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600">-</button>
+                                <span id="comments-count" class="text-2xl font-bold">0</span>
+                                <button onclick="adjustValue('comments', 1)" class="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600">+</button>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-green-50 p-4 rounded-lg">
+                            <h3 class="font-semibold text-green-800 mb-2">Timer</h3>
+                            <div class="text-center">
+                                <span id="timer-display" class="text-2xl font-bold block mb-2">00:00</span>
+                                <button id="timer-btn" onclick="toggleTimer()" class="px-4 py-1 bg-green-500 text-white rounded hover:bg-green-600">Start</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-center gap-4">
+                        <button onclick="updateAccountData()" class="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-semibold">
+                            Update Account
+                        </button>
+                        <button onclick="resetCurrentValues()" class="px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition">
+                            Reset Values
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Page -->
+        <div id="data-page" class="page">
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">Complete Dataset</h2>
+                    <div class="flex gap-2">
+                        <button onclick="exportToCSV()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+                            📥 Export CSV
+                        </button>
+                        <input type="file" id="import-file" accept=".csv" style="display:none" onchange="importFromCSV(event)">
+                        <button onclick="document.getElementById('import-file').click()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                            📤 Import CSV
+                        </button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table id="data-table" class="min-w-full table-auto">
+                        <thead class="bg-gray-100">
+                            <tr id="data-headers"></tr>
+                        </thead>
+                        <tbody id="data-body" class="divide-y divide-gray-200"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Account Page -->
+        <div id="add-page" class="page">
+            <div class="bg-white rounded-lg shadow-md p-6 max-w-2xl mx-auto">
+                <h2 class="text-2xl font-bold mb-6 text-gray-800">Add New Account</h2>
+                
+                <form id="add-account-form" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">User ID</label>
+                        <input type="text" id="new-user-id" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="@username">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Password</label>
+                        <input type="password" id="new-password" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Strategy</label>
+                        <input type="text" id="new-strategy" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="e.g., Strategy A">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Account Start Date</label>
+                        <input type="date" id="new-start-date" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Proxy Type</label>
+                            <select id="new-proxy-type" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                <option value="Residential">Residential</option>
+                                <option value="Datacenter">Datacenter</option>
+                                <option value="Mobile">Mobile</option>
+                                <option value="None">None</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Proxy ID</label>
+                            <input type="text" id="new-proxy-id" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Proxy Password</label>
+                        <input type="password" id="new-proxy-password" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                    </div>
+                    
+                    <button type="submit" class="w-full py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-semibold">
+                        Add Account
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Settings Page -->
+        <div id="settings-page" class="page">
+            <div class="bg-white rounded-lg shadow-md p-6 max-w-2xl mx-auto">
+                <h2 class="text-2xl font-bold mb-6 text-gray-800">Settings & Data Management</h2>
+                
+                <div class="space-y-6">
+                    <div class="border-b pb-4">
+                        <h3 class="text-lg font-semibold mb-3">Data Storage</h3>
+                        <p class="text-gray-600 mb-3">All data is stored locally in your browser. No server or cloud storage is used.</p>
+                        <div class="flex gap-2">
+                            <button onclick="downloadBackup()" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                                💾 Download Backup
+                            </button>
+                            <button onclick="document.getElementById('restore-file').click()" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+                                📂 Restore Backup
+                            </button>
+                            <input type="file" id="restore-file" accept=".json" style="display:none" onchange="restoreBackup(event)">
+                        </div>
+                    </div>
+                    
+                    <div class="border-b pb-4">
+                        <h3 class="text-lg font-semibold mb-3">Account Management</h3>
+                        <select id="delete-account-select" class="w-full px-3 py-2 border rounded-lg mb-3">
+                            <option value="">Select account to delete...</option>
+                        </select>
+                        <button onclick="deleteAccount()" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
+                            🗑️ Delete Selected Account
+                        </button>
+                    </div>
+                    
+                    <div>
+                        <h3 class="text-lg font-semibold mb-3 text-red-600">Danger Zone</h3>
+                        <p class="text-gray-600 mb-3">⚠️ This action cannot be undone!</p>
+                        <button onclick="clearAllData()" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
+                            ⚠️ Clear All Data
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 max-w-sm mx-auto">
+            <h3 class="text-lg font-semibold mb-4">Confirm Deletion</h3>
+            <p class="text-gray-600 mb-6">Are you sure you want to delete account <span id="delete-account-name" class="font-bold"></span>?</p>
+            <div class="flex gap-3">
+                <button onclick="confirmDelete()" class="flex-1 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
+                    Delete
+                </button>
+                <button onclick="cancelDelete()" class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Messages -->
+    <div id="status-message" class="fixed bottom-4 right-4 hidden px-6 py-3 rounded-lg shadow-lg transition-all"></div>
+
+    <script>
+        // ============================================
+        // LOCAL STORAGE DATA MANAGEMENT
+        // ============================================
+        
+        const STORAGE_KEY = 'instagram_tracker_data';
+        let passwordVisible = true;
+        let accountToDelete = null;
+        
+        // Initialize or load data from localStorage
+        function initializeData() {
+            let data = localStorage.getItem(STORAGE_KEY);
+            if (!data) {
+                // First time user - show welcome message
+                document.getElementById('welcome-alert').classList.remove('hidden');
+                
+                // Initialize empty data structure
+                const initialData = {
+                    accounts: {},
+                    lastUpdated: new Date().toISOString()
+                };
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(initialData));
+                return initialData;
+            }
+            return JSON.parse(data);
+        }
+        
+        function saveData(data) {
+            data.lastUpdated = new Date().toISOString();
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        }
+        
+        function getAppData() {
+            return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{"accounts":{}}');
+        }
+        
+        // ============================================
+        // GLOBAL STATE
+        // ============================================
+        
+        let currentAccountData = null;
+        let timerInterval = null;
+        let timerStartTime = null;
+        let timerElapsed = 0;
+        let currentValues = {
+            follows: 0,
+            likes: 0,
+            comments: 0,
+            time_on_app: 0
+        };
+        
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeData();
+            loadAccounts();
+            updateComparisonOptions();
+            setupFormHandlers();
+            setActiveNavButton('analyze-btn');
+            loadDataTable();
+            setDefaultStartDate();
+        });
+        
+        function setDefaultStartDate() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('new-start-date').value = today;
+        }
+        
+        // ============================================
+        // NAVIGATION
+        // ============================================
+        
+        function showPage(page) {
+            const pages = document.querySelectorAll('.page');
+            pages.forEach(p => p.classList.remove('active'));
+            document.getElementById(`${page}-page`).classList.add('active');
+            
+            // Update nav buttons
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('bg-purple-600', 'text-white');
+            });
+            document.getElementById(`${page}-btn`).classList.add('bg-purple-600', 'text-white');
+            
+            // Load data for specific pages
+            if (page === 'data') {
+                loadDataTable();
+            } else if (page === 'settings') {
+                loadDeleteAccountList();
+            }
+        }
+        
+        function setActiveNavButton(btnId) {
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('bg-purple-600', 'text-white');
+            });
+            document.getElementById(btnId).classList.add('bg-purple-600', 'text-white');
+        }
+        
+        // ============================================
+        // STATUS MESSAGES
+        // ============================================
+        
+        function showStatus(message, type = 'success') {
+            const statusEl = document.getElementById('status-message');
+            statusEl.textContent = message;
+            statusEl.className = `fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg transition-all ${
+                type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+            }`;
+            statusEl.classList.remove('hidden');
+            
+            setTimeout(() => {
+                statusEl.classList.add('hidden');
+            }, 3000);
+        }
+        
+        // ============================================
+        // PASSWORD VISIBILITY TOGGLE
+        // ============================================
+        
+        function togglePasswordVisibility() {
+            passwordVisible = !passwordVisible;
+            const passwordEl = document.getElementById('info-password');
+            const data = getAppData();
+            const userId = document.getElementById('account-select').value;
+            
+            if (passwordVisible && data.accounts[userId]) {
+                passwordEl.textContent = data.accounts[userId].password;
+            } else {
+                passwordEl.textContent = '••••••••';
+            }
+            
+            // Update eye icon
+            const eyeIcon = document.getElementById('password-eye-icon');
+            if (passwordVisible) {
+                eyeIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>';
+            } else {
+                eyeIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>';
+            }
+        }
+        
+        // ============================================
+        // ANALYZE PAGE FUNCTIONS
+        // ============================================
+        
+        function updateComparisonOptions() {
+            const mode = document.getElementById('comparison-mode').value;
+            const container = document.getElementById('comparison-items');
+            container.innerHTML = '';
+            
+            const data = getAppData();
+            
+            if (mode === 'strategy') {
+                const strategies = new Set();
+                Object.values(data.accounts).forEach(account => {
+                    if (account.strategy) strategies.add(account.strategy);
+                });
+                
+                strategies.forEach(strategy => {
+                    const label = document.createElement('label');
+                    label.className = 'flex items-center space-x-2 p-1 hover:bg-gray-50 cursor-pointer';
+                    label.innerHTML = `
+                        <input type="checkbox" value="${strategy}" class="custom-checkbox">
+                        <span class="text-sm">${strategy}</span>
+                    `;
+                    container.appendChild(label);
+                });
+            } else {
+                Object.keys(data.accounts).forEach(userId => {
+                    const label = document.createElement('label');
+                    label.className = 'flex items-center space-x-2 p-1 hover:bg-gray-50 cursor-pointer';
+                    label.innerHTML = `
+                        <input type="checkbox" value="${userId}" class="custom-checkbox">
+                        <span class="text-sm">${userId}</span>
+                    `;
+                    container.appendChild(label);
+                });
+            }
+        }
+        
+        function runComparison() {
+            const mode = document.getElementById('comparison-mode').value;
+            const checkboxes = document.querySelectorAll('#comparison-items input[type="checkbox"]:checked');
+            const selected = Array.from(checkboxes).map(cb => cb.value);
+            
+            if (selected.length === 0) {
+                showStatus('Please select at least one item to compare', 'error');
+                return;
+            }
+            
+            const resultsDiv = document.getElementById('analysis-results');
+            const data = getAppData();
+            const comparisonData = [];
+            
+            if (mode === 'strategy') {
+                selected.forEach(strategy => {
+                    const strategyAccounts = Object.entries(data.accounts)
+                        .filter(([_, acc]) => acc.strategy === strategy);
+                    
+                    if (strategyAccounts.length > 0) {
+                        const strategyData = {
+                            strategy: strategy,
+                            account_count: strategyAccounts.length,
+                            accounts: strategyAccounts.map(([id, _]) => id),
+                            daily_averages: calculateStrategyAverages(strategyAccounts),
+                            ban_data: calculateBanData(strategyAccounts)
+                        };
+                        comparisonData.push(strategyData);
+                    }
+                });
+            } else {
+                selected.forEach(userId => {
+                    if (data.accounts[userId]) {
+                        comparisonData.push({
+                            user_id: userId,
+                            ...data.accounts[userId],
+                            ban_data: calculateAccountBanData(data.accounts[userId])
+                        });
+                    }
+                });
+            }
+            
+            displayComparisonResults(comparisonData, mode);
+            createComparisonChart(comparisonData, mode);
+            createBanAnalysisChart(comparisonData, mode);
+        }
+        
+        function calculateBanData(accounts) {
+            const banData = [];
+            accounts.forEach(([userId, account]) => {
+                if (account.days_data) {
+                    let totalActions = 0;
+                    let lastActiveDay = 0;
+                    let status = 'Active';
+                    
+                    Object.entries(account.days_data).forEach(([day, dayData]) => {
+                        totalActions += dayData.total_actions || 0;
+                        if (dayData.status === 'Banned' || dayData.status === 'Shadowbanned') {
+                            status = dayData.status;
+                            if (lastActiveDay === 0) lastActiveDay = parseInt(day);
+                        } else if (status === 'Active') {
+                            lastActiveDay = parseInt(day);
+                        }
+                    });
+                    
+                    if (status !== 'Active' && lastActiveDay > 0) {
+                        banData.push({
+                            days: lastActiveDay,
+                            avgDailyActions: totalActions / lastActiveDay,
+                            status: status
+                        });
+                    }
+                }
+            });
+            return banData;
+        }
+        
+        function calculateAccountBanData(account) {
+            if (!account.days_data) return null;
+            
+            let totalActions = 0;
+            let lastActiveDay = 0;
+            let status = 'Active';
+            
+            Object.entries(account.days_data).forEach(([day, dayData]) => {
+                totalActions += dayData.total_actions || 0;
+                if (dayData.status === 'Banned' || dayData.status === 'Shadowbanned') {
+                    status = dayData.status;
+                    if (lastActiveDay === 0) lastActiveDay = parseInt(day);
+                } else if (status === 'Active') {
+                    lastActiveDay = parseInt(day);
+                }
+            });
+            
+            if (status !== 'Active' && lastActiveDay > 0) {
+                return {
+                    days: lastActiveDay,
+                    avgDailyActions: totalActions / lastActiveDay,
+                    status: status
+                };
+            }
+            return null;
+        }
+        
+        function createBanAnalysisChart(data, mode) {
+            const canvas = document.getElementById('ban-analysis-chart');
+            canvas.style.display = 'block';
+            
+            const ctx = canvas.getContext('2d');
+            
+            // Destroy existing chart if it exists
+            if (window.banAnalysisChart) {
+                window.banAnalysisChart.destroy();
+            }
+            
+            const scatterData = [];
+            const colors = {
+                'Banned': 'rgb(239, 68, 68)',
+                'Shadowbanned': 'rgb(245, 158, 11)',
+                'Active': 'rgb(16, 185, 129)'
+            };
+            
+            data.forEach(item => {
+                if (mode === 'strategy' && item.ban_data) {
+                    item.ban_data.forEach(ban => {
+                        scatterData.push({
+                            x: ban.days,
+                            y: ban.avgDailyActions,
+                            backgroundColor: colors[ban.status],
+                            label: `${item.strategy} - ${ban.status}`
+                        });
+                    });
+                } else if (mode === 'account' && item.ban_data) {
+                    scatterData.push({
+                        x: item.ban_data.days,
+                        y: item.ban_data.avgDailyActions,
+                        backgroundColor: colors[item.ban_data.status],
+                        label: `${item.user_id} - ${item.ban_data.status}`
+                    });
+                }
+            });
+            
+            if (scatterData.length === 0) {
+                canvas.style.display = 'none';
+                return;
+            }
+            
+            window.banAnalysisChart = new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'Ban Analysis',
+                        data: scatterData,
+                        pointRadius: 8,
+                        pointHoverRadius: 10
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Days Active vs Daily Actions Until Ban'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Days: ${context.parsed.x}, Actions/Day: ${context.parsed.y}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Days Until Ban'
+                            },
+                            beginAtZero: true
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Average Daily Actions'
+                            },
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+        
+        function calculateBanProbability() {
+            const days = parseInt(document.getElementById('calc-days').value);
+            const actions = parseInt(document.getElementById('calc-actions').value);
+            
+            if (!days || !actions) {
+                showStatus('Please enter both days and actions', 'error');
+                return;
+            }
+            
+            // Simple risk calculation based on thresholds
+            let risk = 0;
+            let message = '';
+            
+            // Risk factors
+            if (actions > 200) risk += 30;
+            else if (actions > 150) risk += 20;
+            else if (actions > 100) risk += 10;
+            
+            if (days < 7) risk += 30;
+            else if (days < 14) risk += 20;
+            else if (days < 30) risk += 10;
+            
+            // Actions per day ratio
+            const ratio = actions / Math.max(days, 1);
+            if (ratio > 10) risk += 20;
+            else if (ratio > 5) risk += 10;
+            
+            // Cap at 95%
+            risk = Math.min(risk, 95);
+            
+            // Set message based on risk
+            if (risk < 20) {
+                message = 'Low risk. Your activity pattern appears safe.';
+            } else if (risk < 40) {
+                message = 'Moderate risk. Consider reducing daily actions.';
+            } else if (risk < 60) {
+                message = 'High risk. Strongly recommend reducing activity.';
+            } else {
+                message = 'Very high risk! Account likely to be flagged.';
+            }
+            
+            const resultDiv = document.getElementById('ban-probability-result');
+            const riskValue = document.getElementById('ban-risk-value');
+            const riskMessage = document.getElementById('ban-risk-message');
+            
+            riskValue.textContent = `${risk}%`;
+            riskValue.className = 'text-2xl font-bold ' + 
+                (risk < 40 ? 'text-green-600' : risk < 60 ? 'text-yellow-600' : 'text-red-600');
+            riskMessage.textContent = message;
+            
+            resultDiv.classList.remove('hidden');
+            resultDiv.querySelector('div').className = 'p-4 rounded-lg ' + 
+                (risk < 40 ? 'bg-green-50' : risk < 60 ? 'bg-yellow-50' : 'bg-red-50');
+        }
+        
+        function calculateStrategyAverages(accounts) {
+            const dailyAverages = [];
+            
+            for (let day = 1; day <= 100; day++) {
+                let totals = {
+                    follows: 0,
+                    likes: 0,
+                    comments: 0,
+                    total_actions: 0,
+                    time_on_app: 0,
+                    active_accounts: 0
+                };
+                
+                accounts.forEach(([_, account]) => {
+                    if (account.days_data && account.days_data[day]) {
+                        const dayData = account.days_data[day];
+                        totals.follows += dayData.follows || 0;
+                        totals.likes += dayData.likes || 0;
+                        totals.comments += dayData.comments || 0;
+                        totals.total_actions += dayData.total_actions || 0;
+                        totals.time_on_app += dayData.time_on_app || 0;
+                        if (dayData.status === 'Active') totals.active_accounts++;
+                    }
+                });
+                
+                const count = accounts.length;
+                dailyAverages.push({
+                    day: day,
+                    avg_follows: count > 0 ? totals.follows / count : 0,
+                    avg_likes: count > 0 ? totals.likes / count : 0,
+                    avg_comments: count > 0 ? totals.comments / count : 0,
+                    avg_total_actions: count > 0 ? totals.total_actions / count : 0,
+                    avg_time_on_app: count > 0 ? totals.time_on_app / count : 0,
+                    active_accounts: totals.active_accounts
+                });
+            }
+            
+            return dailyAverages;
+        }
+        
+        function displayComparisonResults(data, mode) {
+            const resultsDiv = document.getElementById('analysis-results');
+            let html = '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">';
+            
+            data.forEach(item => {
+                if (mode === 'strategy') {
+                    const avgData = calculateAverages(item.daily_averages);
+                    html += `
+                        <div class="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-lg border border-purple-200">
+                            <h3 class="font-bold text-lg mb-2">${item.strategy}</h3>
+                            <p class="text-sm text-gray-600 mb-3">${item.account_count} accounts</p>
+                            <div class="space-y-1 text-sm">
+                                <p>Avg Follows: <span class="font-semibold">${avgData.follows.toFixed(1)}/day</span></p>
+                                <p>Avg Likes: <span class="font-semibold">${avgData.likes.toFixed(1)}/day</span></p>
+                                <p>Avg Comments: <span class="font-semibold">${avgData.comments.toFixed(1)}/day</span></p>
+                                <p>Avg Total: <span class="font-semibold">${avgData.total.toFixed(1)}/day</span></p>
+                                <p>Avg Time: <span class="font-semibold">${avgData.time.toFixed(1)} min/day</span></p>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    const avgData = calculateAccountAverages(item.days_data);
+                    html += `
+                        <div class="bg-gradient-to-br from-blue-50 to-green-50 p-4 rounded-lg border border-blue-200">
+                            <h3 class="font-bold text-lg mb-2">${item.user_id}</h3>
+                            <p class="text-sm text-gray-600 mb-3">Strategy: ${item.strategy}</p>
+                            <div class="space-y-1 text-sm">
+                                <p>Avg Follows: <span class="font-semibold">${avgData.follows.toFixed(1)}/day</span></p>
+                                <p>Avg Likes: <span class="font-semibold">${avgData.likes.toFixed(1)}/day</span></p>
+                                <p>Avg Comments: <span class="font-semibold">${avgData.comments.toFixed(1)}/day</span></p>
+                                <p>Avg Total: <span class="font-semibold">${avgData.total.toFixed(1)}/day</span></p>
+                                <p>Avg Time: <span class="font-semibold">${avgData.time.toFixed(1)} min/day</span></p>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+            
+            html += '</div>';
+            resultsDiv.innerHTML = html;
+        }
+        
+        function calculateAverages(dailyData) {
+            let totals = { follows: 0, likes: 0, comments: 0, total: 0, time: 0 };
+            let count = 0;
+            
+            dailyData.forEach(day => {
+                if (day.avg_total_actions > 0) {
+                    totals.follows += day.avg_follows;
+                    totals.likes += day.avg_likes;
+                    totals.comments += day.avg_comments;
+                    totals.total += day.avg_total_actions;
+                    totals.time += day.avg_time_on_app;
+                    count++;
+                }
+            });
+            
+            if (count === 0) return totals;
+            
+            return {
+                follows: totals.follows / count,
+                likes: totals.likes / count,
+                comments: totals.comments / count,
+                total: totals.total / count,
+                time: totals.time / count
+            };
+        }
+        
+        function calculateAccountAverages(daysData) {
+            let totals = { follows: 0, likes: 0, comments: 0, total: 0, time: 0 };
+            let count = 0;
+            
+            if (!daysData) return totals;
+            
+            Object.values(daysData).forEach(day => {
+                if (day && day.total_actions > 0) {
+                    totals.follows += day.follows || 0;
+                    totals.likes += day.likes || 0;
+                    totals.comments += day.comments || 0;
+                    totals.total += day.total_actions || 0;
+                    totals.time += day.time_on_app || 0;
+                    count++;
+                }
+            });
+            
+            if (count === 0) return totals;
+            
+            return {
+                follows: totals.follows / count,
+                likes: totals.likes / count,
+                comments: totals.comments / count,
+                total: totals.total / count,
+                time: totals.time / count
+            };
+        }
+        
+        function createComparisonChart(data, mode) {
+            const canvas = document.getElementById('comparison-chart');
+            canvas.style.display = 'block';
+            
+            const ctx = canvas.getContext('2d');
+            
+            // Destroy existing chart if it exists
+            if (window.comparisonChart) {
+                window.comparisonChart.destroy();
+            }
+            
+            const datasets = [];
+            const colors = ['rgb(147, 51, 234)', 'rgb(59, 130, 246)', 'rgb(16, 185, 129)', 'rgb(245, 158, 11)', 'rgb(239, 68, 68)'];
+            
+            data.forEach((item, index) => {
+                const name = mode === 'strategy' ? item.strategy : item.user_id;
+                const chartData = [];
+                
+                for (let day = 1; day <= 30; day++) {
+                    if (mode === 'strategy') {
+                        chartData.push(item.daily_averages[day - 1]?.avg_total_actions || 0);
+                    } else {
+                        chartData.push(item.days_data?.[day]?.total_actions || 0);
+                    }
+                }
+                
+                datasets.push({
+                    label: name,
+                    data: chartData,
+                    borderColor: colors[index % colors.length],
+                    backgroundColor: colors[index % colors.length] + '20',
+                    tension: 0.1
+                });
+            });
+            
+            window.comparisonChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: 30}, (_, i) => `Day ${i + 1}`),
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Total Actions Over Time (First 30 Days)'
+                        },
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Total Actions'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // ============================================
+        // INPUT PAGE FUNCTIONS
+        // ============================================
+        
+        function loadAccounts() {
+            const data = getAppData();
+            const select = document.getElementById('account-select');
+            select.innerHTML = '<option value="">Choose an account...</option>';
+            
+            Object.keys(data.accounts).forEach(userId => {
+                const option = document.createElement('option');
+                option.value = userId;
+                option.textContent = userId;
+                select.appendChild(option);
+            });
+        }
+        
+        function loadAccountData() {
+            const userId = document.getElementById('account-select').value;
+            if (!userId) {
+                document.getElementById('account-info').classList.add('hidden');
+                return;
+            }
+            
+            const data = getAppData();
+            currentAccountData = data.accounts[userId];
+            
+            if (!currentAccountData) {
+                showStatus('Account not found', 'error');
+                return;
+            }
+            
+            currentAccountData.user_id = userId;
+            
+            // Calculate current day
+            const startDate = new Date(currentAccountData.date_started);
+            const today = new Date();
+            const daysDiff = Math.floor((today - startDate) / (1000 * 60 * 60 * 24));
+            const currentDay = Math.min(Math.max(1, daysDiff + 1), 100);
+            
+            // Display account info
+            document.getElementById('info-username').textContent = userId;
+            document.getElementById('info-password').textContent = passwordVisible ? currentAccountData.password : '••••••••';
+            document.getElementById('info-proxy-id').textContent = currentAccountData.proxy_id || 'N/A';
+            document.getElementById('info-proxy-password').textContent = '••••••••';
+            document.getElementById('info-strategy').textContent = currentAccountData.strategy || 'N/A';
+            document.getElementById('info-age').textContent = daysDiff;
+            document.getElementById('info-day').textContent = currentDay;
+            document.getElementById('info-proxy').textContent = currentAccountData.proxy_type || 'None';
+            
+            // Set account status
+            const statusSelect = document.getElementById('account-status-select');
+            if (currentAccountData.days_data && currentAccountData.days_data[currentDay]) {
+                statusSelect.value = currentAccountData.days_data[currentDay].status || 'Active';
+            } else {
+                statusSelect.value = 'Active';
+            }
+            
+            currentAccountData.current_day = currentDay;
+            
+            // Load existing values for current day if any
+            if (currentAccountData.days_data && currentAccountData.days_data[currentDay]) {
+                const dayData = currentAccountData.days_data[currentDay];
+                document.getElementById('follows-count').textContent = dayData.follows || 0;
+                document.getElementById('likes-count').textContent = dayData.likes || 0;
+                document.getElementById('comments-count').textContent = dayData.comments || 0;
+            }
+            
+            // Reset current values
+            resetCurrentValues();
+            
+            // Show the account info section
+            document.getElementById('account-info').classList.remove('hidden');
+        }
+        
+        function updateAccountStatus() {
+            if (!currentAccountData) return;
+            
+            const status = document.getElementById('account-status-select').value;
+            const data = getAppData();
+            const userId = currentAccountData.user_id;
+            const currentDay = currentAccountData.current_day;
+            
+            if (!data.accounts[userId].days_data) {
+                data.accounts[userId].days_data = {};
+            }
+            
+            if (!data.accounts[userId].days_data[currentDay]) {
+                data.accounts[userId].days_data[currentDay] = {
+                    follows: 0,
+                    likes: 0,
+                    comments: 0,
+                    total_actions: 0,
+                    time_on_app: 0
+                };
+            }
+            
+            data.accounts[userId].days_data[currentDay].status = status;
+            saveData(data);
+        }
+        
+        function adjustValue(type, delta) {
+            currentValues[type] = Math.max(0, currentValues[type] + delta);
+            document.getElementById(`${type}-count`).textContent = currentValues[type];
+        }
+        
+        function toggleTimer() {
+            const btn = document.getElementById('timer-btn');
+            
+            if (timerInterval) {
+                // Stop timer
+                clearInterval(timerInterval);
+                timerInterval = null;
+                
+                // Calculate elapsed time in minutes
+                const elapsed = Math.floor((Date.now() - timerStartTime) / 1000);
+                timerElapsed += elapsed;
+                currentValues.time_on_app = Math.floor(timerElapsed / 60);
+                
+                btn.textContent = 'Start';
+                btn.classList.remove('bg-red-500', 'hover:bg-red-600');
+                btn.classList.add('bg-green-500', 'hover:bg-green-600');
+            } else {
+                // Start timer
+                timerStartTime = Date.now();
+                
+                timerInterval = setInterval(() => {
+                    const totalSeconds = timerElapsed + Math.floor((Date.now() - timerStartTime) / 1000);
+                    const minutes = Math.floor(totalSeconds / 60);
+                    const seconds = totalSeconds % 60;
+                    document.getElementById('timer-display').textContent = 
+                        `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                }, 1000);
+                
+                btn.textContent = 'Stop';
+                btn.classList.remove('bg-green-500', 'hover:bg-green-600');
+                btn.classList.add('bg-red-500', 'hover:bg-red-600');
+            }
+        }
+        
+        function updateAccountData() {
+            if (!currentAccountData) {
+                showStatus('Please select an account first', 'error');
+                return;
+            }
+            
+            // Stop timer if running
+            if (timerInterval) {
+                toggleTimer();
+            }
+            
+            const data = getAppData();
+            const userId = currentAccountData.user_id;
+            const currentDay = currentAccountData.current_day;
+            const status = document.getElementById('account-status-select').value;
+            
+            // Initialize days_data if it doesn't exist
+            if (!data.accounts[userId].days_data) {
+                data.accounts[userId].days_data = {};
+            }
+            
+            // Get existing data for this day
+            const existingData = data.accounts[userId].days_data[currentDay] || {
+                follows: 0,
+                likes: 0,
+                comments: 0,
+                time_on_app: 0
+            };
+            
+            // Add new values to existing values
+            data.accounts[userId].days_data[currentDay] = {
+                follows: existingData.follows + currentValues.follows,
+                likes: existingData.likes + currentValues.likes,
+                comments: existingData.comments + currentValues.comments,
+                total_actions: existingData.follows + currentValues.follows + 
+                              existingData.likes + currentValues.likes + 
+                              existingData.comments + currentValues.comments,
+                time_on_app: existingData.time_on_app + currentValues.time_on_app,
+                status: status
+            };
+            
+            saveData(data);
+            showStatus('Account updated successfully', 'success');
+            resetCurrentValues();
+            loadAccountData(); // Reload to show updated data
+        }
+        
+        function resetCurrentValues() {
+            currentValues = {
+                follows: 0,
+                likes: 0,
+                comments: 0,
+                time_on_app: 0
+            };
+            
+            document.getElementById('follows-count').textContent = '0';
+            document.getElementById('likes-count').textContent = '0';
+            document.getElementById('comments-count').textContent = '0';
+            document.getElementById('timer-display').textContent = '00:00';
+            
+            // Reset timer
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+            timerElapsed = 0;
+            
+            const btn = document.getElementById('timer-btn');
+            btn.textContent = 'Start';
+            btn.classList.remove('bg-red-500', 'hover:bg-red-600');
+            btn.classList.add('bg-green-500', 'hover:bg-green-600');
+        }
+        
+        function previousAccount() {
+            const select = document.getElementById('account-select');
+            if (select.selectedIndex > 1) {
+                select.selectedIndex--;
+                loadAccountData();
+            }
+        }
+        
+        function nextAccount() {
+            const select = document.getElementById('account-select');
+            if (select.selectedIndex < select.options.length - 1) {
+                select.selectedIndex++;
+                loadAccountData();
+            }
+        }
+        
+        // ============================================
+        // DATA PAGE FUNCTIONS
+        // ============================================
+        
+        function loadDataTable() {
+            const data = getAppData();
+            const headers = document.getElementById('data-headers');
+            const body = document.getElementById('data-body');
+            
+            // Clear existing content
+            headers.innerHTML = '';
+            body.innerHTML = '';
+            
+            // Create header row with delete button column
+            const headerRow = ['', 'Metric'];
+            Object.keys(data.accounts).forEach(userId => {
+                headerRow.push(userId);
+            });
+            
+            headerRow.forEach((header, index) => {
+                const th = document.createElement('th');
+                th.className = 'px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider';
+                if (index === 0) {
+                    th.style.width = '40px';
+                }
+                th.textContent = header;
+                headers.appendChild(th);
+            });
+            
+            // Add account info rows
+            const infoRows = [
+                { label: 'Password', key: 'password', hidden: true },
+                { label: 'Account Status', key: 'current_status' },
+                { label: 'Strategy', key: 'strategy' },
+                { label: 'Date Started', key: 'date_started' },
+                { label: 'Proxy Type', key: 'proxy_type' },
+                { label: 'Proxy ID', key: 'proxy_id' },
+                { label: 'Proxy Password', key: 'proxy_password', hidden: true }
+            ];
+            
+            infoRows.forEach((info, rowIndex) => {
+                const tr = document.createElement('tr');
+                
+                // Empty cell for delete button column
+                const emptyTd = document.createElement('td');
+                emptyTd.className = 'px-2';
+                if (rowIndex === 0) {
+                    // Add delete buttons only in the first row
+                    emptyTd.innerHTML = `
+                        <div class="flex items-center justify-center">
+                            <span class="text-xs text-gray-400">DEL→</span>
+                        </div>
+                    `;
+                }
+                tr.appendChild(emptyTd);
+                
+                const labelTd = document.createElement('td');
+                labelTd.className = 'px-4 py-2 font-semibold text-sm';
+                labelTd.textContent = info.label;
+                tr.appendChild(labelTd);
+                
+                Object.keys(data.accounts).forEach((userId, index) => {
+                    const td = document.createElement('td');
+                    td.className = 'px-4 py-2 text-sm relative';
+                    
+                    if (rowIndex === 0) {
+                        // Add delete button in the password row
+                        td.innerHTML = `
+                            <div class="flex items-center justify-between">
+                                <span>${info.hidden ? '••••••••' : (data.accounts[userId][info.key] || '-')}</span>
+                                <button onclick="showDeleteModal('${userId}')" class="ml-2 px-2 py-1 text-xs bg-red-100 text-red-600 rounded hover:bg-red-200 delete-btn">
+                                    🗑️
+                                </button>
+                            </div>
+                        `;
+                    } else if (info.key === 'current_status') {
+                        // Get current status from latest day data
+                        let status = 'Active';
+                        if (data.accounts[userId].days_data) {
+                            const days = Object.keys(data.accounts[userId].days_data).map(Number).sort((a, b) => b - a);
+                            if (days.length > 0 && data.accounts[userId].days_data[days[0]].status) {
+                                status = data.accounts[userId].days_data[days[0]].status;
+                            }
+                        }
+                        const statusColor = status === 'Active' ? 'text-green-600' : 
+                                          status === 'Banned' ? 'text-red-600' : 'text-yellow-600';
+                        td.innerHTML = `<span class="${statusColor}">${status}</span>`;
+                    } else {
+                        td.textContent = info.hidden ? '••••••••' : (data.accounts[userId][info.key] || '-');
+                    }
+                    tr.appendChild(td);
+                });
+                
+                body.appendChild(tr);
+            });
+            
+            // Add day data rows (show first 30 days)
+            for (let day = 1; day <= 30; day++) {
+                ['Follows', 'Likes', 'Comments', 'Total', 'Time (min)', 'Status'].forEach((metric, index) => {
+                    const tr = document.createElement('tr');
+                    tr.className = day % 2 === 0 ? 'bg-gray-50' : '';
+                    
+                    // Empty cell for delete button column
+                    const emptyTd = document.createElement('td');
+                    tr.appendChild(emptyTd);
+                    
+                    const labelTd = document.createElement('td');
+                    labelTd.className = 'px-4 py-2 text-sm font-medium';
+                    labelTd.textContent = `Day ${day} - ${metric}`;
+                    tr.appendChild(labelTd);
+                    
+                    Object.keys(data.accounts).forEach(userId => {
+                        const td = document.createElement('td');
+                        td.className = 'px-4 py-2 text-sm';
+                        
+                        const dayData = data.accounts[userId].days_data?.[day];
+                        if (dayData) {
+                            if (metric === 'Status') {
+                                const status = dayData.status || 'Active';
+                                const statusColor = status === 'Active' ? 'text-green-600' : 
+                                                  status === 'Banned' ? 'text-red-600' : 'text-yellow-600';
+                                td.innerHTML = `<span class="${statusColor}">${status}</span>`;
+                            } else {
+                                const keys = ['follows', 'likes', 'comments', 'total_actions', 'time_on_app'];
+                                td.textContent = dayData[keys[index]] || 0;
+                            }
+                        } else {
+                            td.textContent = metric === 'Status' ? 'Active' : '0';
+                            if (metric === 'Status') {
+                                td.innerHTML = '<span class="text-green-600">Active</span>';
+                            }
+                        }
+                        
+                        tr.appendChild(td);
+                    });
+                    
+                    body.appendChild(tr);
+                });
+            }
+        }
+        
+        function showDeleteModal(userId) {
+            accountToDelete = userId;
+            document.getElementById('delete-account-name').textContent = userId;
+            document.getElementById('delete-modal').style.display = 'flex';
+        }
+        
+        function confirmDelete() {
+            if (!accountToDelete) return;
+            
+            const data = getAppData();
+            delete data.accounts[accountToDelete];
+            saveData(data);
+            
+            loadDataTable();
+            loadAccounts();
+            updateComparisonOptions();
+            showStatus(`Account ${accountToDelete} deleted successfully`, 'success');
+            
+            cancelDelete();
+        }
+        
+        function cancelDelete() {
+            accountToDelete = null;
+            document.getElementById('delete-modal').style.display = 'none';
+        }
+        
+        function exportToCSV() {
+            const data = getAppData();
+            const csv = [];
+            
+            // Headers
+            const headers = ['Metric'];
+            Object.keys(data.accounts).forEach(userId => headers.push(userId));
+            csv.push(headers);
+            
+            // Account info
+            csv.push(['Password', ...Object.values(data.accounts).map(a => a.password || '')]);
+            csv.push(['Strategy', ...Object.values(data.accounts).map(a => a.strategy || '')]);
+            csv.push(['Date Started', ...Object.values(data.accounts).map(a => a.date_started || '')]);
+            csv.push(['Proxy Type', ...Object.values(data.accounts).map(a => a.proxy_type || '')]);
+            csv.push(['Proxy ID', ...Object.values(data.accounts).map(a => a.proxy_id || '')]);
+            csv.push(['Proxy Password', ...Object.values(data.accounts).map(a => a.proxy_password || '')]);
+            
+            // Day data
+            for (let day = 1; day <= 100; day++) {
+                ['Follows', 'Likes', 'Comments', 'Total Actions', 'Time on App', 'Status'].forEach((metric, index) => {
+                    const row = [`Day ${day} - ${metric}`];
+                    Object.values(data.accounts).forEach(account => {
+                        const dayData = account.days_data?.[day];
+                        if (metric === 'Status') {
+                            row.push(dayData?.status || 'Active');
+                        } else {
+                            const keys = ['follows', 'likes', 'comments', 'total_actions', 'time_on_app'];
+                            row.push(dayData?.[keys[index]] || 0);
+                        }
+                    });
+                    csv.push(row);
+                });
+            }
+            
+            // Convert to CSV string
+            const csvContent = csv.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+            
+            // Download
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `instagram_tracker_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            showStatus('Data exported successfully', 'success');
+        }
+        
+        function importFromCSV(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            Papa.parse(file, {
+                complete: function(results) {
+                    try {
+                        const rows = results.data;
+                        const data = getAppData();
+                        
+                        // Parse headers to get user IDs
+                        const userIds = rows[0].slice(1);
+                        
+                        // Initialize accounts
+                        userIds.forEach(userId => {
+                            if (userId && !data.accounts[userId]) {
+                                data.accounts[userId] = {
+                                    strategy: '',
+                                    date_started: new Date().toISOString().split('T')[0],
+                                    proxy_type: 'None',
+                                    days_data: {}
+                                };
+                            }
+                        });
+                        
+                        // Parse data rows
+                        for (let i = 1; i < rows.length; i++) {
+                            const row = rows[i];
+                            const metric = row[0];
+                            
+                            if (metric === 'Password') {
+                                userIds.forEach((userId, index) => {
+                                    if (userId && data.accounts[userId]) {
+                                        data.accounts[userId].password = row[index + 1] || '';
+                                    }
+                                });
+                            } else if (metric === 'Strategy') {
+                                userIds.forEach((userId, index) => {
+                                    if (userId && data.accounts[userId]) {
+                                        data.accounts[userId].strategy = row[index + 1] || '';
+                                    }
+                                });
+                            } else if (metric === 'Date Started') {
+                                userIds.forEach((userId, index) => {
+                                    if (userId && data.accounts[userId]) {
+                                        data.accounts[userId].date_started = row[index + 1] || '';
+                                    }
+                                });
+                            } else if (metric === 'Proxy Type') {
+                                userIds.forEach((userId, index) => {
+                                    if (userId && data.accounts[userId]) {
+                                        data.accounts[userId].proxy_type = row[index + 1] || 'None';
+                                    }
+                                });
+                            } else if (metric === 'Proxy ID') {
+                                userIds.forEach((userId, index) => {
+                                    if (userId && data.accounts[userId]) {
+                                        data.accounts[userId].proxy_id = row[index + 1] || '';
+                                    }
+                                });
+                            } else if (metric === 'Proxy Password') {
+                                userIds.forEach((userId, index) => {
+                                    if (userId && data.accounts[userId]) {
+                                        data.accounts[userId].proxy_password = row[index + 1] || '';
+                                    }
+                                });
+                            } else if (metric && metric.startsWith('Day ')) {
+                                // Parse day data
+                                const match = metric.match(/Day (\d+) - (.+)/);
+                                if (match) {
+                                    const day = parseInt(match[1]);
+                                    const metricType = match[2];
+                                    
+                                    userIds.forEach((userId, index) => {
+                                        if (userId && data.accounts[userId]) {
+                                            if (!data.accounts[userId].days_data[day]) {
+                                                data.accounts[userId].days_data[day] = {};
+                                            }
+                                            
+                                            if (metricType === 'Status') {
+                                                data.accounts[userId].days_data[day].status = row[index + 1] || 'Active';
+                                            } else {
+                                                const value = parseInt(row[index + 1]) || 0;
+                                                switch(metricType) {
+                                                    case 'Follows':
+                                                        data.accounts[userId].days_data[day].follows = value;
+                                                        break;
+                                                    case 'Likes':
+                                                        data.accounts[userId].days_data[day].likes = value;
+                                                        break;
+                                                    case 'Comments':
+                                                        data.accounts[userId].days_data[day].comments = value;
+                                                        break;
+                                                    case 'Total Actions':
+                                                        data.accounts[userId].days_data[day].total_actions = value;
+                                                        break;
+                                                    case 'Time on App':
+                                                        data.accounts[userId].days_data[day].time_on_app = value;
+                                                        break;
+                                                }
+                                            }
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                        
+                        saveData(data);
+                        loadAccounts();
+                        updateComparisonOptions();
+                        loadDataTable();
+                        showStatus('Data imported successfully', 'success');
+                    } catch (error) {
+                        console.error('Import error:', error);
+                        showStatus('Error importing CSV file', 'error');
+                    }
+                }
+            });
+        }
+        
+        // ============================================
+        // ADD ACCOUNT PAGE FUNCTIONS
+        // ============================================
+        
+        function setupFormHandlers() {
+            const form = document.getElementById('add-account-form');
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                
+                const data = getAppData();
+                const userId = document.getElementById('new-user-id').value;
+                
+                if (data.accounts[userId]) {
+                    showStatus('Account already exists', 'error');
+                    return;
+                }
+                
+                data.accounts[userId] = {
+                    password: document.getElementById('new-password').value,
+                    strategy: document.getElementById('new-strategy').value,
+                    date_started: document.getElementById('new-start-date').value,
+                    proxy_type: document.getElementById('new-proxy-type').value,
+                    proxy_id: document.getElementById('new-proxy-id').value || '',
+                    proxy_password: document.getElementById('new-proxy-password').value || '',
+                    days_data: {}
+                };
+                
+                saveData(data);
+                showStatus('Account added successfully', 'success');
+                form.reset();
+                setDefaultStartDate(); // Reset to today's date
+                loadAccounts();
+                updateComparisonOptions();
+            });
+        }
+        
+        // ============================================
+        // SETTINGS PAGE FUNCTIONS
+        // ============================================
+        
+        function loadDeleteAccountList() {
+            const data = getAppData();
+            const select = document.getElementById('delete-account-select');
+            select.innerHTML = '<option value="">Select account to delete...</option>';
+            
+            Object.keys(data.accounts).forEach(userId => {
+                const option = document.createElement('option');
+                option.value = userId;
+                option.textContent = userId;
+                select.appendChild(option);
+            });
+        }
+        
+        function deleteAccount() {
+            const userId = document.getElementById('delete-account-select').value;
+            if (!userId) {
+                showStatus('Please select an account to delete', 'error');
+                return;
+            }
+            
+            if (!confirm(`Are you sure you want to delete account ${userId}? This cannot be undone.`)) {
+                return;
+            }
+            
+            const data = getAppData();
+            delete data.accounts[userId];
+            saveData(data);
+            
+            loadDeleteAccountList();
+            loadAccounts();
+            updateComparisonOptions();
+            showStatus('Account deleted successfully', 'success');
+        }
+        
+        function downloadBackup() {
+            const data = getAppData();
+            const json = JSON.stringify(data, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `instagram_tracker_backup_${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            showStatus('Backup downloaded successfully', 'success');
+        }
+        
+        function restoreBackup(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    saveData(data);
+                    loadAccounts();
+                    updateComparisonOptions();
+                    loadDataTable();
+                    showStatus('Backup restored successfully', 'success');
+                } catch (error) {
+                    showStatus('Invalid backup file', 'error');
+                }
+            };
+            reader.readAsText(file);
+        }
+        
+        function clearAllData() {
+            if (!confirm('Are you sure you want to delete ALL data? This cannot be undone!')) {
+                return;
+            }
+            
+            if (!confirm('This will delete all accounts and their data. Are you absolutely sure?')) {
+                return;
+            }
+            
+            localStorage.removeItem(STORAGE_KEY);
+            initializeData();
+            loadAccounts();
+            updateComparisonOptions();
+            loadDataTable();
+            showStatus('All data cleared', 'success');
+        }
+    </script>
+</body>
+</html>
